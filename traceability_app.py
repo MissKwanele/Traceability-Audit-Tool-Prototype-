@@ -17,6 +17,7 @@ This tool will visualize requirement traceability, identify orphaned requirement
 
 # File upload
 uploaded_file = st.file_uploader("Upload requirements_links.csv", type=["csv"])
+
 if uploaded_file:
     try:
         df = pd.read_csv(uploaded_file)
@@ -99,20 +100,18 @@ if uploaded_file:
         plt.close()
         pdf.image(tmpfile.name, x=10, w=pdf.w - 20)
 
-# Output PDF to a bytes buffer for Streamlit download
-pdf_bytes = pdf.output(dest='S').encode('latin1')
-pdf_output = io.BytesIO(pdf_bytes)
+    # Output PDF to a bytes buffer for Streamlit download
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    pdf_output = io.BytesIO(pdf_bytes)
 
-# Download button
-st.subheader("📥 Download Audit Report")
-st.download_button(
-    label="Download Traceability Report PDF",
-    data=pdf_output,
-    file_name="traceability_report.pdf",
-    mime="application/pdf"
-)
-
+    # Download button
+    st.subheader("📥 Download Audit Report")
+    st.download_button(
+        label="Download Traceability Report PDF",
+        data=pdf_output,
+        file_name="traceability_report.pdf",
+        mime="application/pdf"
+    )
 
 else:
     st.info("Please upload your `requirements_links.csv` file to begin.")
-
