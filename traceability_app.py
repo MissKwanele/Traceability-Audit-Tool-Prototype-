@@ -15,6 +15,9 @@ st.title("🔎 DOORS Traceability Audit Tool")
 st.sidebar.header("🔧 Options")
 enable_mock_doors = st.sidebar.checkbox("Enable DOORS Integration (Mock)", value=False)
 
+approved_reqs = []
+new_issues = []
+
 if enable_mock_doors:
     st.sidebar.subheader("Mock DOORS Settings")
     api_base_url = st.sidebar.text_input("DOORS API Base URL", "https://doors.example.com/api")
@@ -35,10 +38,37 @@ if enable_mock_doors:
         end = datetime.strptime(str(end_date), "%Y-%m-%d")
         return [r for r in sample_requirements if start <= datetime.strptime(r["last_modified"], "%Y-%m-%d") <= end]
 
+    def check_if_requirement_exists(requirement, existing_issues):
+        for issue in existing_issues:
+            if requirement["name"] == issue["summary"]:
+                return issue
+        return None
+
+    def post_requirement_as_issue(requirement):
+        payload = {
+            "summary": requirement["name"],
+            "description": f"Requirement ID: {requirement['id']}\nStatus: {requirement['status']}",
+            "tags": ["requirement", "imported"]
+        }
+        return payload
+
     connect_to_doors(api_base_url, auth_token)
     approved_reqs = get_approved_requirements(start_date, end_date)
+    existing_pm_issues = [{"summary": "System shall encrypt data"}]  # Mocked existing
+    new_issues = []
+
+    for req in approved_reqs:
+        match = check_if_requirement_exists(req, existing_pm_issues)
+        if not match:
+            issue = post_requirement_as_issue(req)
+            new_issues.append(issue)
+
     st.subheader("📥 Approved Requirements from DOORS (Mock)")
     st.write(pd.DataFrame(approved_reqs))
+
+    if new_issues:
+        st.subheader("📝 New Issues to Post")
+        st.write(pd.DataFrame(new_issues))
 
 # File upload
 st.markdown("""
@@ -113,6 +143,15 @@ if uploaded_file:
     if orphans:
         pdf.section_body("Orphaned IDs:\n" + ", ".join(orphans))
 
+    if enable_mock_doors:
+        pdf.section_title("DOORS Approved Requirements")
+        for r in approved_reqs:
+            pdf.section_body(f"{r['id']}: {r['name']} (Status: {r['status']})")
+        if new_issues:
+            pdf.section_title("New Issues Posted")
+            for issue in new_issues:
+                pdf.section_body(f"{issue['summary']}: {issue['description']}")
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
         plt.figure(figsize=(12, 8))
         nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=2000, font_size=10)
@@ -135,4 +174,3 @@ if uploaded_file:
     )
 else:
     st.info("Please upload your `requirements_links.csv` file to begin.")
-
